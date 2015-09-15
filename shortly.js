@@ -40,7 +40,7 @@ app.get('/logout', function(req, res) {
 
 app.get('/', 
 function(req, res) {
-  console.log(req.cookies);
+  // console.log(req.cookies);
   util.checkUser(req.cookies.name, res, function() {
     res.render('index');
   });
@@ -55,6 +55,8 @@ function(req, res) {
 
 app.get('/links', 
 function(req, res) {
+  // console.log('links cookies');
+  // console.log(req.cookies);
   util.checkUser(req.cookies.name, res, function() {
     Links.reset().fetch().then(function(links) {
       res.send(200, links.models);
@@ -87,12 +89,12 @@ function(req, res) {
           base_url: req.headers.origin
         })
         .then(function(newLink) {
-          console.log('newlink');
-          db.knex('urls')
-            .select()
-            .then(function(contents) {
-              console.log(contents);
-            });
+          // console.log('newlink');
+          // db.knex('urls')
+          //   .select()
+          //   .then(function(contents) {
+          //     console.log(contents);
+          //   });
           res.send(200, newLink);
         });
       });
@@ -105,29 +107,52 @@ function(req, res) {
 /************************************************************/
 
 app.post('/login', function(req, res){
-  db.knex('users')
-    .where('username', '=', req.body.username)
-    .then(function(result){
-      if(result[0] && result[0]['username']) {
-        if(req.body.password === result[0]['password']) {
+  new User({'username': req.body.username}).fetch().then(function(found){
+    if( found ){
+      found.checkPassword(req.body.password, function(result){
+        if( !result ){
+          res.writeHead(302, {'Location': '/login'});
+          res.end();
+        } else {
           var token = req.body.username;
           db.knex('tokens')
-            .insert({'token': token, 'userid': result[0]['id']})
+            .insert({'token': token, 'userid': found['id']})
             .then(function(contents){
               res.cookie('name', token);
               res.writeHead(302, {'Location': '/'});
               res.end();
             });
-          } else {
-            res.writeHead(302, {'Location': '/login'});
-            res.end();  
-          }
-        } else {
-          res.writeHead(302, {'Location': '/login'});
-          res.end();
         }
-    });
+      });
+    } else {
+      res.writeHead(302, {'Location': '/login'});
+      res.end();
+    }
+  });
 });
+//   db.knex('users')
+//     .where('username', '=', req.body.username)
+//     .then(function(result){
+//       if(result[0] && result[0]['username']) {
+//         if(req.body.password === result[0]['password']) {
+//           var token = req.body.username;
+//           db.knex('tokens')
+//             .insert({'token': token, 'userid': result[0]['id']})
+//             .then(function(contents){
+//               res.cookie('name', token);
+//               res.writeHead(302, {'Location': '/'});
+//               res.end();
+//             });
+//           } else {
+//             res.writeHead(302, {'Location': '/login'});
+//             res.end();  
+//           }
+//         } else {
+//           res.writeHead(302, {'Location': '/login'});
+//           res.end();
+//         }
+//     });
+// });
 
 app.post('/signup', function(req, res) {
   db.knex('users')
@@ -137,12 +162,8 @@ app.post('/signup', function(req, res) {
       db.knex('tokens')
         .insert({'token': token, 'userid': result[0]})
         .then(function(contents){
-          db.knex('tokens')
-            .select()
-            .then(function(result) {
-            })
           res.cookie('name', token);
-          console.log(res.cookie)
+          // console.log(res.cookie)
           res.writeHead(302, {'Location': '/'});
           res.end();
         });
@@ -159,17 +180,10 @@ app.post('/signup', function(req, res) {
 /************************************************************/
 
 app.get('/*', function(req, res) {
-  console.log('beep boop');
-  console.log(req.cookies);
-  console.log(req.params[0]);
-  db.knex('urls')
-    .select()
-    .then(function(contents) {
-      console.log(contents);
-    });
+util.checkUser(req.cookies.name, res, function(){
   new Link({ code: req.params[0] }).fetch().then(function(link) {
     if (!link) {
-      console.log('weewoo');
+      // console.log('weewoo');
       res.redirect('/');
     } else {
       var click = new Click({
@@ -184,6 +198,7 @@ app.get('/*', function(req, res) {
       });
     }
   });
+});
 });
 
 console.log('Shortly is listening on 4568');

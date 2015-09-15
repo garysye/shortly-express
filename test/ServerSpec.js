@@ -7,8 +7,6 @@ var User = require('../app/models/user');
 var Links = require('../app/collections/links');
 var Link = require('../app/models/link');
 
-db.knex.schema.dropTable('urls')
-
 /************************************************************/
 // Mocha doesn't have a way to designate pending before blocks.
 // Mimic the behavior of xit and xdescribe with xbeforeEach.
@@ -19,8 +17,10 @@ db.knex.schema.dropTable('urls')
 
 
 describe('', function() {
+  var j = request.jar();
+  var requestWithSession = request.defaults({jar: j});
 
-  beforeEach(function() {
+  beforeEach(function(done) {
     // log out currently signed in user
     request('http://127.0.0.1:4568/logout', function(error, res, body) {});
 
@@ -59,19 +59,10 @@ describe('', function() {
         // };
       });
 
-
-  });
-
-  describe('Link creation:', function(){
-    var j = request.jar();
-    var requestWithSession = request.defaults({jar: j});
-
-    beforeEach(function(done){
-      // create a user that we can then log-in with
       new User({
           'username': 'Phillip',
-          'password': 'Phillip'
-      }).save().then(function(){
+      }).save().then(function(user){
+        user.setPassword('Phillip');
         var options = {
           'method': 'POST',
           'followAllRedirects': true,
@@ -86,7 +77,10 @@ describe('', function() {
           done();
         });
       });
-    });
+
+  });
+
+  describe('Link creation:', function(){
 
     it('Only shortens valid urls, returning a 404 - Not found for invalid urls', function(done) {
       var options = {
@@ -155,29 +149,7 @@ describe('', function() {
 
     describe('With previously saved urls:', function(){
 
-      var requestWithSession = request.defaults({jar: true});
-
-      var beforeEach = function(done){
-        // create a user that we can then log-in with
-        new User({
-            'username': 'Phillip',
-            'password': 'Phillip'
-        }).save().then(function(){
-          var options = {
-            'method': 'POST',
-            'followAllRedirects': true,
-            'uri': 'http://127.0.0.1:4568/login',
-            'json': {
-              'username': 'Phillip',
-              'password': 'Phillip'
-            }
-          };
-          // login via form and save session info
-          requestWithSession(options, function(error, res, body) {
-            done();
-          });
-        });
-      };
+      // var requestWithSession = request.defaults({jar: true});
 
       var link;
 
@@ -205,7 +177,6 @@ describe('', function() {
 
         requestWithSession(options, function(error, res, body) {
           var code = res.body.code;
-          console.log('code', code);
           expect(code).to.equal(link.get('code'));
           done();
         });
@@ -219,7 +190,6 @@ describe('', function() {
 
         requestWithSession(options, function(error, res, body) {
           var currentLocation = res.request.href;
-          console.log(options);
           expect(currentLocation).to.equal('http://roflzoo.com/');
           done();
         });
@@ -232,7 +202,6 @@ describe('', function() {
         };
 
         requestWithSession(options, function(error, res, body) {
-          console.log(res.req.path);
           expect(body).to.include('"title":"Funny pictures of animals, funny dog pictures"');
           expect(body).to.include('"code":"' + link.get('code') + '"');
           done();
