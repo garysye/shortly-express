@@ -7,13 +7,14 @@ var User = require('../app/models/user');
 var Links = require('../app/collections/links');
 var Link = require('../app/models/link');
 
+db.knex.schema.dropTable('urls')
+
 /************************************************************/
 // Mocha doesn't have a way to designate pending before blocks.
 // Mimic the behavior of xit and xdescribe with xbeforeEach.
 // Remove the 'x' from beforeEach block when working on
 // authentication tests.
 /************************************************************/
-var xbeforeEach = function(){};
 /************************************************************/
 
 
@@ -57,13 +58,15 @@ describe('', function() {
         //   message: 'Failed to create test setup data'
         // };
       });
+
+
   });
 
   describe('Link creation:', function(){
+    var j = request.jar();
+    var requestWithSession = request.defaults({jar: j});
 
-    var requestWithSession = request.defaults({jar: true});
-
-var xbeforeEach = function(){};
+    beforeEach(function(done){
       // create a user that we can then log-in with
       new User({
           'username': 'Phillip',
@@ -152,6 +155,30 @@ var xbeforeEach = function(){};
 
     describe('With previously saved urls:', function(){
 
+      var requestWithSession = request.defaults({jar: true});
+
+      var beforeEach = function(done){
+        // create a user that we can then log-in with
+        new User({
+            'username': 'Phillip',
+            'password': 'Phillip'
+        }).save().then(function(){
+          var options = {
+            'method': 'POST',
+            'followAllRedirects': true,
+            'uri': 'http://127.0.0.1:4568/login',
+            'json': {
+              'username': 'Phillip',
+              'password': 'Phillip'
+            }
+          };
+          // login via form and save session info
+          requestWithSession(options, function(error, res, body) {
+            done();
+          });
+        });
+      };
+
       var link;
 
       beforeEach(function(done){
@@ -178,6 +205,7 @@ var xbeforeEach = function(){};
 
         requestWithSession(options, function(error, res, body) {
           var code = res.body.code;
+          console.log('code', code);
           expect(code).to.equal(link.get('code'));
           done();
         });
@@ -191,6 +219,7 @@ var xbeforeEach = function(){};
 
         requestWithSession(options, function(error, res, body) {
           var currentLocation = res.request.href;
+          console.log(options);
           expect(currentLocation).to.equal('http://roflzoo.com/');
           done();
         });
@@ -203,6 +232,7 @@ var xbeforeEach = function(){};
         };
 
         requestWithSession(options, function(error, res, body) {
+          console.log(res.req.path);
           expect(body).to.include('"title":"Funny pictures of animals, funny dog pictures"');
           expect(body).to.include('"code":"' + link.get('code') + '"');
           done();
@@ -213,7 +243,7 @@ var xbeforeEach = function(){};
 
   }); // 'Link creation'
 
-  xdescribe('Privileged Access:', function(){
+  describe('Privileged Access:', function(){
 
     it('Redirects to login page if a user tries to access the main page and is not signed in', function(done) {
       request('http://127.0.0.1:4568/', function(error, res, body) {
@@ -238,7 +268,7 @@ var xbeforeEach = function(){};
 
   }); // 'Priviledged Access'
 
-  xdescribe('Account Creation:', function(){
+  describe('Account Creation:', function(){
 
     it('Signup creates a user record', function(done) {
       var options = {
@@ -286,9 +316,9 @@ var xbeforeEach = function(){};
 
   }); // 'Account Creation'
 
-  xdescribe('Account Login:', function(){
+  describe('Account Login:', function(){
 
-    var requestWithSession = request.defaults({jar: true});
+    // var requestWithSession = request.defaults({jar: true});
 
     beforeEach(function(done){
       new User({
